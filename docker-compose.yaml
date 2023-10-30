@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  lifekind:
+    container_name: lifekind-bot
+    env_file: .env
+    build: .
+    restart: always
+    # volumes:
+    # - ${PWD}/backend.log:/app/backend.log
