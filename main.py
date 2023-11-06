@@ -83,6 +83,7 @@ async def ded(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(
                     chat_id=update.effective_chat.id,
                     text=contents[i : i + TELEGRAM_MSG_LENGTH],
+                    parse_mode="MarkdownV2",
                 )
             logger.debug("ded's copypasta sent!")
     else:
