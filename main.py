@@ -65,6 +65,26 @@ async def pie(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def pic(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.debug(
+        f"asked for a pic in {update.effective_chat.id} - {update.effective_chat.effective_name}"
+    )
+
+    directory = "assets/pics/"
+    filename = pick_file(directory)
+    full_path = directory + filename
+
+    logger.debug(f"pic: picked {filename}")
+    with open(full_path, "rb") as file:
+        await context.bot.send_photo(
+            chat_id=update.effective_chat.id,
+            photo=file,
+            caption=full_path,
+        )
+
+    logger.debug("pic sent!")
+
+
 async def ded(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.debug(
         f"got ded'ed in {update.effective_chat.id} - {update.effective_chat.effective_name}"
@@ -83,7 +103,7 @@ async def ded(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(
                     chat_id=update.effective_chat.id,
                     text=contents[i : i + TELEGRAM_MSG_LENGTH],
-                    parse_mode="MarkdownV2",
+                    parse_mode="HTML",
                 )
             logger.debug("ded's copypasta sent!")
     else:
@@ -112,6 +132,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("pie", pie))
     app.add_handler(CommandHandler("ded", ded))
+    app.add_handler(CommandHandler("pic", pic))
     # app.add_handler(MessageHandler())
 
     logger.info("starting polling...")
