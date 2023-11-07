@@ -6,5 +6,5 @@ services:
     env_file: .env
     build: .
     restart: always
-    # volumes:
-    # - ${PWD}/backend.log:/app/backend.log
+    volumes:
+    - ${PWD}/assets:/app/assets
