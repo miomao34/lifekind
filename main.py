@@ -1,10 +1,11 @@
-from os import getenv
+from os import getenv, walk
 from os.path import splitext
 import logging
-from pathlib import Path
 from random import choice
+from asyncio import run
 
 from telegram import Update
+from telegram.constants import MessageLimit
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -12,7 +13,7 @@ from telegram.ext import (
     ContextTypes,
 )
 
-formatter = logging.Formatter("%(asctime)s - %(name)s - [%(levelname)s]:%(message)s")
+formatter = logging.Formatter("%(asctime)s - %(name)s - [%(levelname)s] > %(message)s")
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -29,21 +30,22 @@ logger.addHandler(file_log_handler)
 logger.info("booting up: loading main.py")
 
 
-TELEGRAM_MSG_LENGTH = 4096
-
-
 def pick_file(directory: str) -> str:
-    """returns a random chosen filename from a folder"""
-    filenames = list(Path(directory).rglob("*.*"))
+    """returns a random chosen filename from a folder; recursive"""
 
-    return choice(filenames).name
+    fullpath_filenames = []
+    for path, _, local_filenames in walk(directory):
+        fullpath_filenames.extend([path + file for file in local_filenames])
+
+    return choice(fullpath_filenames)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = [
         "a one-percenter-helper.",
-        "ask me about the pies",
-        "or the gramp's fries",
+        "ask me about the pies,",
+        "the gramp's fries,",
+        "or for a picture for good times,",
     ]
 
     await context.bot.send_message(
@@ -72,17 +74,31 @@ async def pic(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     directory = "assets/pics/"
     filename = pick_file(directory)
-    full_path = directory + filename
 
     logger.debug(f"pic: picked {filename}")
-    with open(full_path, "rb") as file:
+    with open(filename, "rb") as file:
         await context.bot.send_photo(
             chat_id=update.effective_chat.id,
             photo=file,
-            caption=full_path,
+            caption=filename,
         )
 
     logger.debug("pic sent!")
+
+
+async def send_text(
+    context: ContextTypes.DEFAULT_TYPE,
+    chat_id: int,
+    filepath: str,
+) -> None:
+    with open(filepath, "r") as file:
+        text = file.read()
+    for i in range(0, len(text), MessageLimit.MAX_TEXT_LENGTH):
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=text[i : i + MessageLimit.MAX_TEXT_LENGTH],
+            parse_mode="HTML",
+        )
 
 
 async def ded(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -92,31 +108,42 @@ async def ded(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     directory = "assets/ded/"
     filename = pick_file(directory=directory)
-    full_path = directory + filename
 
     logger.debug(f"ded's file {filename} chosen")
 
-    if splitext(filename)[1] == ".txt":
-        with open(full_path, "r") as file:
-            contents = file.read()
-            for i in range(0, len(contents), TELEGRAM_MSG_LENGTH):
-                await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
-                    text=contents[i : i + TELEGRAM_MSG_LENGTH],
-                    parse_mode="HTML",
-                )
-            logger.debug("ded's copypasta sent!")
-    else:
-        with open(full_path, "rb") as file:
-            try:
-                await context.bot.send_photo(
-                    chat_id=update.effective_chat.id,
-                    photo=file,
-                )
-                logger.debug("screenshot of ded's msg sent!")
-            except Exception as e:
-                logger.error(f"tried to send photo {filename} but failed; not a photo?")
-                logger.error(e)
+    file_extension = splitext(filename)[1]
+
+    if file_extension == ".txt":
+        # ded's copypasta, in text format (maybe w/ html layout tags)
+        # ? using a wrapper to paginate
+        await send_text(
+            context=context,
+            chat_id=update.effective_chat.id,
+            filepath=filename,
+        )
+        logger.debug("ded's copypasta sent!")
+
+    if file_extension == ".ogg":
+        # voice recording
+        await context.bot.send_voice(
+            chat_id=update.effective_chat.id,
+            voice=filename,
+        )
+        logger.debug("sent a ded-related voice message!")
+        # except Exception as e:
+        #     logger.error(f"tried to send photo {filename} but failed; not a photo?")
+        #     logger.error(e)
+
+    if file_extension == ".jpg":
+        # shitpost pic
+        await context.bot.send_photo(
+            chat_id=update.effective_chat.id,
+            photo=filename,
+        )
+        logger.debug("screenshot of ded's msg sent!")
+        # except Exception as e:
+        #     logger.error(f"tried to send photo {filename} but failed; not a photo?")
+        #     logger.error(e)
 
 
 if __name__ == "__main__":
@@ -134,6 +161,9 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("ded", ded))
     app.add_handler(CommandHandler("pic", pic))
     # app.add_handler(MessageHandler())
+
+    # todo: add tg logging
+    # logger.addHandler()
 
     logger.info("starting polling...")
     app.run_polling()
