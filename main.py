@@ -76,12 +76,11 @@ async def pic(update: Update, context: ContextTypes.DEFAULT_TYPE):
     filename = pick_file(directory)
 
     logger.debug(f"pic: picked {filename}")
-    with open(filename, "rb") as file:
-        await context.bot.send_photo(
-            chat_id=update.effective_chat.id,
-            photo=file,
-            caption=filename,
-        )
+    await context.bot.send_photo(
+        chat_id=update.effective_chat.id,
+        photo=filename,
+        caption=filename,
+    )
 
     logger.debug("pic sent!")
 
